@@ -568,7 +568,7 @@ public class Demo extends Component implements ActionListener {
         return result;
     }
 
-    public static BufferedImage convoluteImage(BufferedImage img, float[][] mask) {
+    public static BufferedImage convoluteImage(BufferedImage img, float[][] mask, boolean absCorrection) {
         int width = img.getWidth();
         int height = img.getHeight();
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -580,7 +580,7 @@ public class Demo extends Component implements ActionListener {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 float redSum = 0, greenSum = 0, blueSum = 0;
-
+                float max = 0;
                 for (int i = 0; i < maskHeight; i++) {
                     for (int j = 0; j < maskWidth; j++) {
                         int pixelX = x + j - maskOffset;
@@ -596,15 +596,21 @@ public class Demo extends Component implements ActionListener {
                         redSum += pixelColor.getRed() * maskValue;
                         greenSum += pixelColor.getGreen() * maskValue;
                         blueSum += pixelColor.getBlue() * maskValue;
+                        max = Math.max(max, Math.max(Math.abs(redSum), Math.max(Math.abs(greenSum), Math.abs(blueSum))));
                     }
                 }
 
-                // Clamp the result to be within 0-255
-                int red = Math.min(Math.max((int) redSum, 0), 255);
-                int green = Math.min(Math.max((int) greenSum, 0), 255);
-                int blue = Math.min(Math.max((int) blueSum, 0), 255);
 
-                Color newColor = new Color(red, green, blue);
+
+                if(absCorrection)
+                {
+                    redSum = (int)Math.abs((redSum / max)*255);
+                    greenSum = (int)Math.abs((greenSum / max)*255);
+                    blueSum = (int)Math.abs((blueSum / max)*255);
+                }
+
+
+                Color newColor = new Color(clamp((int)redSum), clamp((int)greenSum), clamp((int)blueSum));
                 result.setRGB(x, y, newColor.getRGB());
             }
         }
@@ -751,13 +757,128 @@ public class Demo extends Component implements ActionListener {
                 return;
 
             case 9:
-                float[][] mask = {
-                        { 1 / 9f, 1 / 9f, 1 / 9f },
-                        { 1 / 9f, 1 / 9f, 1 / 9f },
-                        { 1 / 9f, 1 / 9f, 1 / 9f }
+                String[] options = {
+                        "Averaging",
+                        "Weighted averaging",
+                        "4 neighbour Laplacian",
+                        "8 neighbour Laplacian",
+                        "4 neighbour Laplacian Enhancement",
+                        "8 neighbour Laplacian Enhancement",
+                        "Roberts 1",
+                        "Roberts 2",
+                        "Sobel X",
+                        "Sobel Y"
+                    };
+                // ...and passing `frame` instead of `null` as first parameter
+                Object selectionObject = JOptionPane.showInputDialog(this, "Choose", "Menu", JOptionPane.PLAIN_MESSAGE,
+                        null, options, options[0]);
+                String selection = selectionObject.toString();
+
+                float[][] mask = new float[][] {
+                        { 0f, 0f, 0f },
+                        { 0f, 1f, 0f },
+                        { 0f, 0f, 0f }
                 };
-                biFiltered = convoluteImage(bi, mask);
-                return;
+                if (selection.equals(options[0])) {
+                    mask = new float[][] {
+                            { 1 / 9f, 1 / 9f, 1 / 9f },
+                            { 1 / 9f, 1 / 9f, 1 / 9f },
+                            { 1 / 9f, 1 / 9f, 1 / 9f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                if (selection.equals(options[1])) {
+                    mask = new float[][] {
+                            { 1 / 16f, 2 / 16f, 1 / 16f },
+                            { 2 / 16f, 4 / 16f, 2 / 16f },
+                            { 1 / 16f, 2 / 16f, 1 / 16f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                if (selection.equals(options[2])) {
+                    mask = new float[][] {
+                            { 0f, -1f, 0f },
+                            { -1f, 4f, -1f },
+                            { 0f, -1f, 0f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                if (selection.equals(options[3])) {
+                    mask = new float[][] {
+                            { -1f, -1f, -1f },
+                            { -1f, 8f, -1f },
+                            { -1f, -1f, -1f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                
+                if (selection.equals(options[4])) {
+                    mask = new float[][] {
+                            { 0f, -1f, 0f },
+                            { -1f, 5f, -1f },
+                            { 0f, -1f, 0f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                if (selection.equals(options[5])) {
+                    mask = new float[][] {
+                            { -1f, -1f, -1f },
+                            { -1f, 9f, -1f },
+                            { -1f, -1f, -1f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, false);
+                    return;
+                }
+
+                if (selection.equals(options[6])) {
+                    mask = new float[][] {
+                            { 0f, 0f, 0f },
+                            { 0f, 0f, -1f },
+                            { 0f, 1f, 0f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, true);
+                    return;
+                }
+
+                if (selection.equals(options[7])) {
+                    mask = new float[][] {
+                            { 0f, 0f, 0f },
+                            { 0f, -1f, 0f },
+                            { 0f, 0f, 1f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, true);
+                    return;
+                }
+
+                if (selection.equals(options[8])) {
+                    mask = new float[][] {
+                            { -1f, 0f, 1f },
+                            { -2f, 0f, 2f },
+                            { -1f, 0f, 1f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, true);
+                    return;
+                }
+
+                if (selection.equals(options[9])) {
+                    mask = new float[][] {
+                            { -1f, -2f, -1f },
+                            { 0f, 0f, 0f },
+                            { 1f, 2f, 1f }
+                    };
+                    biFiltered = convoluteImage(biFiltered, mask, true);
+                    return;
+                }
         }
 
     }
