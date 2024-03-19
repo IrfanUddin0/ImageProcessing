@@ -2,6 +2,7 @@ package lab1;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.TreeSet;
@@ -40,7 +41,12 @@ public class Demo extends Component implements ActionListener {
             "Random LUT",
             "Bit Plane Slicing",
             "equalizeHistogram",
-            "Convolution"
+            "Convolution",
+            "Salt and Pepper Noise",
+            "Min filtering",
+            "Max filtering",
+            "Midpoint filtering",
+            "Median filtering"
     };
 
     int opIndex; // option index for
@@ -618,6 +624,167 @@ public class Demo extends Component implements ActionListener {
         return result;
     }
 
+    public static BufferedImage addSaltAndPepperNoise(BufferedImage img, double amount) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage noisyImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Random rand = new Random();
+
+        int numNoisyPixels = (int) (amount * width * height); 
+
+        // Copy the image to not overwrite the original.
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                noisyImage.setRGB(x, y, img.getRGB(x, y));
+            }
+        }
+
+        // Add salt-and-pepper noise.
+        for (int i = 0; i < numNoisyPixels; i++) {
+            int x = rand.nextInt(width);
+            int y = rand.nextInt(height);
+
+            // Randomly decide whether to add salt or pepper.
+            int value = rand.nextBoolean() ? 0xFFFFFF : 0x000000; // White for salt, black for pepper.
+            noisyImage.setRGB(x, y, value);
+        }
+
+        return noisyImage;
+    }
+
+    public static BufferedImage applyMinFiltering(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int minVal = 255;
+                Color minCol = new Color(0,0,0);
+    
+                // Iterate through the neighborhood
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        int p = img.getRGB(x + j, y + i);
+                        if ((p & 0xFF) < minVal) {
+                            minVal = p & 0xFF;
+                            minCol = new Color(p);
+                        }
+                    }
+                }
+    
+                // Replace the current pixel value with the minimum value found
+                result.setRGB(x, y, minCol.getRGB());
+            }
+        }
+        return result;
+    }
+
+    public static BufferedImage applyMaxFiltering(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int maxVal = 0;
+                Color maxCol = new Color(0,0,0);
+    
+                // Iterate through the neighborhood
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        int p = img.getRGB(x + j, y + i);
+                        if ((p & 0xFF) > maxVal) {
+                            maxVal = p & 0xFF;
+                            maxCol = new Color(p);
+                        }
+                    }
+                }
+    
+                // Replace the current pixel value with the minimum value found
+                result.setRGB(x, y, maxCol.getRGB());
+            }
+        }
+        return result;
+    }
+
+    public static BufferedImage applyMidpointFiltering(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int minRed = 255, minGreen = 255, minBlue = 255;
+                int maxRed = 0, maxGreen = 0, maxBlue = 0;
+    
+                // Iterate through the 3x3 neighborhood
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        Color color = new Color(img.getRGB(x + j, y + i));
+    
+                        minRed = Math.min(color.getRed(), minRed);
+                        minGreen = Math.min(color.getGreen(), minGreen);
+                        minBlue = Math.min(color.getBlue(), minBlue);
+    
+                        maxRed = Math.max(color.getRed(), maxRed);
+                        maxGreen = Math.max(color.getGreen(), maxGreen);
+                        maxBlue = Math.max(color.getBlue(), maxBlue);
+                    }
+                }
+    
+                // Compute the midpoint values for each channel
+                int midpointRed = (minRed + maxRed) / 2;
+                int midpointGreen = (minGreen + maxGreen) / 2;
+                int midpointBlue = (minBlue + maxBlue) / 2;
+    
+                // Replace the current pixel value with the midpoint values
+                Color newColor = new Color(midpointRed, midpointGreen, midpointBlue);
+                result.setRGB(x, y, newColor.getRGB());
+            }
+        }
+        return result;
+    }
+
+    public static BufferedImage applyMedianFiltering(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int kernelSize = 3;
+        int[] redValues = new int[kernelSize * kernelSize];
+        int[] greenValues = new int[kernelSize * kernelSize];
+        int[] blueValues = new int[kernelSize * kernelSize];
+
+        for (int y = 1; y < height - 1; y++) {
+            for (int x = 1; x < width - 1; x++) {
+                int k = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        Color color = new Color(img.getRGB(x + dx, y + dy));
+                        redValues[k] = color.getRed();
+                        greenValues[k] = color.getGreen();
+                        blueValues[k] = color.getBlue();
+                        k++;
+                    }
+                }
+
+                Arrays.sort(redValues);
+                Arrays.sort(greenValues);
+                Arrays.sort(blueValues);
+
+                // Find the median values
+                int medianRed = redValues[kernelSize * kernelSize / 2];
+                int medianGreen = greenValues[kernelSize * kernelSize / 2];
+                int medianBlue = blueValues[kernelSize * kernelSize / 2];
+
+                // Set the new pixel value in the result image
+                Color medianColor = new Color(medianRed, medianGreen, medianBlue);
+                result.setRGB(x, y, medianColor.getRGB());
+            }
+        }
+        return result;
+    }
+
     // ************************************
     // Your turn now: Add more function below
     // ************************************
@@ -879,6 +1046,26 @@ public class Demo extends Component implements ActionListener {
                     biFiltered = convoluteImage(biFiltered, mask, true);
                     return;
                 }
+
+            case 10:
+                biFiltered = addSaltAndPepperNoise(biFiltered, Math.random()/8d);
+                return;
+
+            case 11:
+                biFiltered = applyMinFiltering(biFiltered);
+                return;
+
+            case 12:
+                biFiltered = applyMaxFiltering(biFiltered);
+                return;
+
+            case 13:
+                biFiltered = applyMidpointFiltering(biFiltered);
+                return;
+
+            case 14:
+                biFiltered = applyMedianFiltering(biFiltered);
+                return;
         }
 
     }
