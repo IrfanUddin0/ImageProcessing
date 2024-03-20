@@ -46,7 +46,9 @@ public class Demo extends Component implements ActionListener {
             "Min filtering",
             "Max filtering",
             "Midpoint filtering",
-            "Median filtering"
+            "Median filtering",
+            "Threshold",
+            "Automated threshold"
     };
 
     int opIndex; // option index for
@@ -602,21 +604,18 @@ public class Demo extends Component implements ActionListener {
                         redSum += pixelColor.getRed() * maskValue;
                         greenSum += pixelColor.getGreen() * maskValue;
                         blueSum += pixelColor.getBlue() * maskValue;
-                        max = Math.max(max, Math.max(Math.abs(redSum), Math.max(Math.abs(greenSum), Math.abs(blueSum))));
+                        max = Math.max(max,
+                                Math.max(Math.abs(redSum), Math.max(Math.abs(greenSum), Math.abs(blueSum))));
                     }
                 }
 
-
-
-                if(absCorrection)
-                {
-                    redSum = (int)Math.abs((redSum / max)*255);
-                    greenSum = (int)Math.abs((greenSum / max)*255);
-                    blueSum = (int)Math.abs((blueSum / max)*255);
+                if (absCorrection) {
+                    redSum = (int) Math.abs((redSum / max) * 255);
+                    greenSum = (int) Math.abs((greenSum / max) * 255);
+                    blueSum = (int) Math.abs((blueSum / max) * 255);
                 }
 
-
-                Color newColor = new Color(clamp((int)redSum), clamp((int)greenSum), clamp((int)blueSum));
+                Color newColor = new Color(clamp((int) redSum), clamp((int) greenSum), clamp((int) blueSum));
                 result.setRGB(x, y, newColor.getRGB());
             }
         }
@@ -630,7 +629,7 @@ public class Demo extends Component implements ActionListener {
         BufferedImage noisyImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Random rand = new Random();
 
-        int numNoisyPixels = (int) (amount * width * height); 
+        int numNoisyPixels = (int) (amount * width * height);
 
         // Copy the image to not overwrite the original.
         for (int y = 0; y < height; y++) {
@@ -656,12 +655,12 @@ public class Demo extends Component implements ActionListener {
         int width = img.getWidth();
         int height = img.getHeight();
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-    
+
         for (int y = 1; y < height - 1; y++) {
             for (int x = 1; x < width - 1; x++) {
                 int minVal = 255;
-                Color minCol = new Color(0,0,0);
-    
+                Color minCol = new Color(0, 0, 0);
+
                 // Iterate through the neighborhood
                 for (int i = -1; i <= 1; i++) {
                     for (int j = -1; j <= 1; j++) {
@@ -672,7 +671,7 @@ public class Demo extends Component implements ActionListener {
                         }
                     }
                 }
-    
+
                 // Replace the current pixel value with the minimum value found
                 result.setRGB(x, y, minCol.getRGB());
             }
@@ -684,12 +683,12 @@ public class Demo extends Component implements ActionListener {
         int width = img.getWidth();
         int height = img.getHeight();
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-    
+
         for (int y = 1; y < height - 1; y++) {
             for (int x = 1; x < width - 1; x++) {
                 int maxVal = 0;
-                Color maxCol = new Color(0,0,0);
-    
+                Color maxCol = new Color(0, 0, 0);
+
                 // Iterate through the neighborhood
                 for (int i = -1; i <= 1; i++) {
                     for (int j = -1; j <= 1; j++) {
@@ -700,7 +699,7 @@ public class Demo extends Component implements ActionListener {
                         }
                     }
                 }
-    
+
                 // Replace the current pixel value with the minimum value found
                 result.setRGB(x, y, maxCol.getRGB());
             }
@@ -712,32 +711,32 @@ public class Demo extends Component implements ActionListener {
         int width = img.getWidth();
         int height = img.getHeight();
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-    
+
         for (int y = 1; y < height - 1; y++) {
             for (int x = 1; x < width - 1; x++) {
                 int minRed = 255, minGreen = 255, minBlue = 255;
                 int maxRed = 0, maxGreen = 0, maxBlue = 0;
-    
+
                 // Iterate through the 3x3 neighborhood
                 for (int i = -1; i <= 1; i++) {
                     for (int j = -1; j <= 1; j++) {
                         Color color = new Color(img.getRGB(x + j, y + i));
-    
+
                         minRed = Math.min(color.getRed(), minRed);
                         minGreen = Math.min(color.getGreen(), minGreen);
                         minBlue = Math.min(color.getBlue(), minBlue);
-    
+
                         maxRed = Math.max(color.getRed(), maxRed);
                         maxGreen = Math.max(color.getGreen(), maxGreen);
                         maxBlue = Math.max(color.getBlue(), maxBlue);
                     }
                 }
-    
+
                 // Compute the midpoint values for each channel
                 int midpointRed = (minRed + maxRed) / 2;
                 int midpointGreen = (minGreen + maxGreen) / 2;
                 int midpointBlue = (minBlue + maxBlue) / 2;
-    
+
                 // Replace the current pixel value with the midpoint values
                 Color newColor = new Color(midpointRed, midpointGreen, midpointBlue);
                 result.setRGB(x, y, newColor.getRGB());
@@ -782,6 +781,89 @@ public class Demo extends Component implements ActionListener {
                 result.setRGB(x, y, medianColor.getRGB());
             }
         }
+        return result;
+    }
+
+    public static BufferedImage applyThresholding(BufferedImage img, int threshold) {
+        threshold = clamp(threshold);
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Color color = new Color(img.getRGB(x, y));
+                int red = color.getRed();
+                int green = color.getGreen();
+                int blue = color.getBlue();
+
+                // Convert to grayscale using luminance formula
+                int gray = (int) (0.3 * red + 0.59 * green + 0.11 * blue);
+
+                // Apply threshold
+                if (gray > threshold) {
+                    result.setRGB(x, y, Color.WHITE.getRGB());
+                } else {
+                    result.setRGB(x, y, Color.BLACK.getRGB());
+                }
+            }
+        }
+        return result;
+    }
+
+    public static BufferedImage applyAutomatedThresholding(BufferedImage img) {
+        int width = img.getWidth();
+        int height = img.getHeight();
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        // Step 1: Initial guess for threshold
+        int threshold = 128;
+        int oldThreshold;
+
+        do {
+            int sum1 = 0, sum2 = 0;
+            int count1 = 0, count2 = 0;
+
+            // Step 2: Split the image & calculate means
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    Color color = new Color(img.getRGB(x, y));
+                    int gray = (int)(0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
+
+                    if (gray < threshold) {
+                        sum1 += gray;
+                        count1++;
+                    } else {
+                        sum2 += gray;
+                        count2++;
+                    }
+                }
+            }
+
+            // Calculate means
+            int mean1 = (count1 == 0) ? 0 : sum1 / count1;
+            int mean2 = (count2 == 0) ? 0 : sum2 / count2;
+
+            // Step 3: Calculate new threshold
+            oldThreshold = threshold;
+            threshold = (mean1 + mean2) / 2;
+
+        } while (oldThreshold != threshold);
+
+        // Apply the found threshold
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Color color = new Color(img.getRGB(x, y));
+                int gray = (int)(0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
+                
+                if (gray < threshold) {
+                    result.setRGB(x, y, Color.BLACK.getRGB());
+                } else {
+                    result.setRGB(x, y, Color.WHITE.getRGB());
+                }
+            }
+        }
+
         return result;
     }
 
@@ -935,7 +1017,7 @@ public class Demo extends Component implements ActionListener {
                         "Roberts 2",
                         "Sobel X",
                         "Sobel Y"
-                    };
+                };
                 // ...and passing `frame` instead of `null` as first parameter
                 Object selectionObject = JOptionPane.showInputDialog(this, "Choose", "Menu", JOptionPane.PLAIN_MESSAGE,
                         null, options, options[0]);
@@ -986,7 +1068,6 @@ public class Demo extends Component implements ActionListener {
                     return;
                 }
 
-                
                 if (selection.equals(options[4])) {
                     mask = new float[][] {
                             { 0f, -1f, 0f },
@@ -1048,7 +1129,7 @@ public class Demo extends Component implements ActionListener {
                 }
 
             case 10:
-                biFiltered = addSaltAndPepperNoise(biFiltered, Math.random()/8d);
+                biFiltered = addSaltAndPepperNoise(biFiltered, Math.random() / 8d);
                 return;
 
             case 11:
@@ -1065,6 +1146,20 @@ public class Demo extends Component implements ActionListener {
 
             case 14:
                 biFiltered = applyMedianFiltering(biFiltered);
+                return;
+
+            case 15:
+                String thresammount = JOptionPane.showInputDialog("Enter Threshold Ammount:");
+                if (thresammount == null) {
+                    return;
+                }
+                if (thresammount.matches("^-?\\d+$")) {
+                    biFiltered = applyThresholding(biFiltered, Integer.parseInt(thresammount));
+                    return;
+                }
+
+            case 16:
+                biFiltered = applyAutomatedThresholding(biFiltered);
                 return;
         }
 
