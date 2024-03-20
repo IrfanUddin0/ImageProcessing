@@ -13,6 +13,7 @@ import java.awt.image.*;
 import javax.imageio.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.DefaultCaret;
 
 public class Demo extends Component implements ActionListener {
 
@@ -29,6 +30,7 @@ public class Demo extends Component implements ActionListener {
             "AND",
             "OR",
             "XOR",
+            "ROI Select"
     };
 
     String operationsDescs[] = {
@@ -88,9 +90,6 @@ public class Demo extends Component implements ActionListener {
     private void LoadNewImage2(String path) {
         try {
             bi2 = ImageIO.read(new File(path));
-
-            w = bi2.getWidth(null);
-            h = bi2.getHeight(null);
             if (bi.getType() != BufferedImage.TYPE_INT_RGB) {
                 BufferedImage tbi = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
                 Graphics big = tbi.getGraphics();
@@ -828,7 +827,7 @@ public class Demo extends Component implements ActionListener {
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     Color color = new Color(img.getRGB(x, y));
-                    int gray = (int)(0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
+                    int gray = (int) (0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
 
                     if (gray < threshold) {
                         sum1 += gray;
@@ -854,8 +853,8 @@ public class Demo extends Component implements ActionListener {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 Color color = new Color(img.getRGB(x, y));
-                int gray = (int)(0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
-                
+                int gray = (int) (0.3 * color.getRed() + 0.59 * color.getGreen() + 0.11 * color.getBlue());
+
                 if (gray < threshold) {
                     result.setRGB(x, y, Color.BLACK.getRGB());
                 } else {
@@ -913,6 +912,81 @@ public class Demo extends Component implements ActionListener {
 
             case 7:
                 biFiltered = applyBitwiseOperation(bi, bi2, "XOR");
+                return;
+            case 8:
+                EventQueue.invokeLater(new Runnable() {
+                    Point startPoint;
+                    Rectangle selection;
+                    @Override
+                    public void run() {
+                        JFrame frame = new JFrame("Image Selection");
+                        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+                        JLabel imageLabel = new JLabel(new ImageIcon(bi)) {
+                            @Override
+                            protected void paintComponent(Graphics g) {
+                                super.paintComponent(g);
+                                if (selection != null) {
+                                    Graphics2D g2d = (Graphics2D) g.create();
+                                    g2d.setColor(new Color(0, 0, 0, 128));
+                                    g2d.fill(selection);
+                                    g2d.setColor(Color.WHITE);
+                                    g2d.draw(selection);
+                                    g2d.dispose();
+                                }
+                            }
+                        };
+
+                        imageLabel.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mousePressed(MouseEvent e) {
+                                startPoint = e.getPoint();
+                                selection = new Rectangle();
+                            }
+
+                            @Override
+                            public void mouseReleased(MouseEvent e) {
+                                startPoint = null;
+                                // Here you can access the selection rectangle's coordinates
+                                System.out.println("Selection coordinates: " + selection);
+                                BufferedImage newbi2 = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+
+                                for (int i = 0; i < selection.width; i++) {
+                                    for (int j = 0; j < selection.height; j++) {
+                                        newbi2.setRGB(selection.x + i, selection.y + j, Color.white.getRGB());
+                                    }
+                                }
+                                bi2 = newbi2;
+                                biFiltered = applyBitwiseOperation(bi, bi2, "AND");
+                                repaint();
+                                frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+                            }
+                        });
+
+                        imageLabel.addMouseMotionListener(new MouseAdapter() {
+                            @Override
+                            public void mouseDragged(MouseEvent e) {
+                                if (startPoint != null) {
+                                    selection.setBounds(Math.min(startPoint.x, e.getX()),
+                                            Math.min(startPoint.y, e.getY()),
+                                            Math.abs(startPoint.x - e.getX()), Math.abs(startPoint.y - e.getY()));
+                                    imageLabel.repaint();
+                                }
+                            }
+                        });
+
+                        JPanel panel = new JPanel();
+                        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+                        panel.setOpaque(true);
+                        panel.add(imageLabel);
+                        panel.setPreferredSize(new Dimension(bi.getWidth(), bi.getHeight()));
+
+                        frame.getContentPane().add(BorderLayout.CENTER, panel);
+                        frame.pack();
+                        frame.setLocationByPlatform(true);
+                        frame.setVisible(true);
+                    }
+                });
                 return;
         }
 
